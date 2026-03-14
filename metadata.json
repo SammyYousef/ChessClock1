@@ -1,0 +1,5 @@
+{
+  "name": "Chess Clock 1",
+  "description": "A professional-grade, multi-stage configurable chess clock with move recording and arbitration features.",
+  "requestFramePermissions": []
+}
