@@ -12,7 +12,8 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
-  Check
+  Check,
+  Flag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -31,6 +32,7 @@ const DEFAULT_CONFIGS: ClockConfig[] = [
     player1Name: 'Player 1',
     player2Name: 'Player 2',
     whitePlayer: 1, // Top player is White by default
+    flaggingStopsClock: true,
     stages: [
       {
         id: 's1',
@@ -58,6 +60,7 @@ const DEFAULT_CONFIGS: ClockConfig[] = [
     player1Name: 'Player 1',
     player2Name: 'Player 2',
     whitePlayer: 1, // Top player is White by default
+    flaggingStopsClock: true,
     stages: [
       {
         id: 's1',
@@ -85,7 +88,8 @@ export default function App() {
     ...activeConfigRaw,
     player1Name: activeConfigRaw.player1Name || 'Player 1',
     player2Name: activeConfigRaw.player2Name || 'Player 2',
-    whitePlayer: activeConfigRaw.whitePlayer || 1
+    whitePlayer: activeConfigRaw.whitePlayer || 1,
+    flaggingStopsClock: activeConfigRaw.flaggingStopsClock !== undefined ? activeConfigRaw.flaggingStopsClock : true
   }), [activeConfigRaw]);
 
   // Game State
@@ -133,14 +137,14 @@ export default function App() {
           let newTime = prev.time;
           
           if (currentStage.direction === TimerDirection.DOWN) {
-            newTime = Math.max(0, prev.time - delta);
+            newTime = prev.time - delta;
           } else {
             newTime = prev.time + delta;
           }
 
           const isFlagged = currentStage.direction === TimerDirection.DOWN && newTime <= 0;
           
-          if (isFlagged) {
+          if (isFlagged && activeConfig.flaggingStopsClock) {
             setStatus('FINISHED');
           }
 
@@ -237,16 +241,17 @@ export default function App() {
   };
 
   const formatTime = (seconds: number) => {
-    const safeSeconds = isNaN(seconds) ? 0 : seconds;
-    const h = Math.floor(safeSeconds / 3600);
-    const m = Math.floor((safeSeconds % 3600) / 60);
-    const s = Math.floor(safeSeconds % 60);
+    const isNegative = seconds < 0;
+    const absSeconds = Math.abs(isNaN(seconds) ? 0 : seconds);
+    const h = Math.floor(absSeconds / 3600);
+    const m = Math.floor((absSeconds % 3600) / 60);
+    const s = Math.floor(absSeconds % 60);
     
     const hStr = h > 0 ? `${h}:` : '';
     const mStr = m < 10 && h > 0 ? `0${m}:` : `${m}:`;
     const sStr = s < 10 ? `0${s}` : `${s}`;
     
-    return `${hStr}${mStr}${sStr}`;
+    return `${isNegative ? '-' : ''}${hStr}${mStr}${sStr}`;
   };
 
   const saveConfigs = (newConfigs: ClockConfig[]) => {
@@ -269,127 +274,186 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#121212] text-white font-sans selection:bg-emerald-500/30">
-      {/* Main Clock Area */}
-      <div className="max-w-5xl mx-auto p-4 h-screen flex flex-col">
+    <>
+      <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-emerald-500/30 flex flex-col items-center justify-center p-4 overflow-y-auto">
+        <div className="w-full max-w-5xl flex flex-col gap-6 py-8">
+          {/* Physical Casing Simulation */}
+          <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] flex flex-col p-8 rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7),0_30px_60px_-30px_rgba(0,0,0,0.8)] border-t border-white/10 overflow-hidden">
+        {/* Wood Texture Background */}
+        <div 
+          className="absolute inset-0 z-0 opacity-40 mix-blend-overlay"
+          style={{ 
+            backgroundImage: 'url(https://images.unsplash.com/photo-1588345921523-c2d6c5f10f21?auto=format&fit=crop&w=1920&q=80)',
+            backgroundSize: 'cover'
+          }}
+        />
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black opacity-90" />
         
-        {/* Top Player (Player 1) */}
-        <div className="flex-1 flex flex-col gap-4">
-          <button
-            onClick={() => handlePlayerPress(1)}
-            disabled={status === 'FINISHED' || (status === 'RUNNING' && activePlayer !== 1)}
-            className={`flex-1 rounded-3xl transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden border-2 ${
-              activePlayer === 1 
-                ? 'bg-emerald-600 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.2)]' 
-                : 'bg-zinc-900 border-zinc-800 opacity-80'
-            } ${status === 'FINISHED' && p1.isFlagged ? 'bg-red-900 border-red-500' : ''}`}
-          >
-            <div className="absolute top-4 left-6 flex items-center gap-2">
-              <span className="text-white font-bold text-lg">{activeConfig.player1Name}</span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${activeConfig.whitePlayer === 1 ? 'bg-white text-black' : 'bg-black text-white border border-zinc-700'}`}>
-                {activeConfig.whitePlayer === 1 ? 'WHITE' : 'BLACK'}
-              </span>
-            </div>
-            <div className="text-8xl font-mono font-bold tracking-tighter">
-              {formatTime(p1.time)}
-            </div>
-            <div className="mt-4 text-2xl text-zinc-400 font-medium">
-              Moves: <span className="text-white">{p1.moves}</span>
-            </div>
-            {p1.isFlagged && <div className="absolute inset-0 bg-red-600/20 flex items-center justify-center text-4xl font-black uppercase tracking-tighter">FLAGGED</div>}
-          </button>
+        {/* Top Plungers (Decorative) */}
+        <div className="absolute -top-6 left-0 right-0 flex justify-around px-20 z-10 pointer-events-none">
+          <div className={`w-32 h-12 bg-zinc-800 rounded-t-2xl border-x border-t border-white/10 shadow-lg transition-transform duration-300 ${activePlayer === 1 ? 'translate-y-4' : 'translate-y-0'}`} />
+          <div className={`w-32 h-12 bg-zinc-800 rounded-t-2xl border-x border-t border-white/10 shadow-lg transition-transform duration-300 ${activePlayer === 2 ? 'translate-y-4' : 'translate-y-0'}`} />
         </div>
 
-        {/* Center Controls */}
-        <div className="py-8 flex items-center justify-between gap-4">
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowConfig(true)}
-              className="p-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-300"
-              title="Configuration"
+        <div className="relative z-20 flex-1 flex flex-col">
+          {/* Top Player (Player 1) */}
+          <div className="flex-1 flex flex-col gap-4">
+            <button
+              onClick={() => handlePlayerPress(1)}
+              disabled={status === 'FINISHED' || (status === 'RUNNING' && activePlayer !== 1)}
+              className={`flex-1 rounded-[32px] transition-all duration-500 flex flex-col items-center justify-center relative overflow-hidden border-4 ${
+                activePlayer === 1 
+                  ? p1.isFlagged ? 'bg-red-900/40 border-red-500 shadow-[inset_0_0_60px_rgba(239,68,68,0.3),0_0_40px_rgba(239,68,68,0.2)]' : 'bg-emerald-900/40 border-emerald-400 shadow-[inset_0_0_60px_rgba(16,185,129,0.3),0_0_40px_rgba(16,185,129,0.2)]' 
+                  : p1.isFlagged ? 'bg-red-950/20 border-red-900/50 opacity-60' : 'bg-black/40 border-zinc-800/50 opacity-60'
+              } group`}
             >
-              <Settings size={24} />
-            </button>
-            <button 
-              onClick={() => setShowArbitration(true)}
-              disabled={status !== 'PAUSED'}
-              className={`p-4 rounded-2xl transition-colors ${status === 'PAUSED' ? 'bg-zinc-800 hover:bg-zinc-700 text-amber-400' : 'bg-zinc-900 text-zinc-600 cursor-not-allowed'}`}
-              title="Arbitration"
-            >
-              <Gavel size={24} />
+              {/* Inner Bezel Effect */}
+              <div className="absolute inset-2 rounded-[24px] border border-white/5 pointer-events-none" />
+              
+              <div className="absolute top-6 left-8 flex items-center gap-3">
+                <span className="text-zinc-400 font-bold text-xl tracking-tight">{activeConfig.player1Name}</span>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${activeConfig.whitePlayer === 1 ? 'bg-white text-black' : 'bg-zinc-800 text-white border border-white/10'}`}>
+                  {activeConfig.whitePlayer === 1 ? 'WHITE' : 'BLACK'}
+                </span>
+                {p1.isFlagged && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-900/40">
+                    <Flag size={12} fill="currentColor" /> FLAGGED
+                  </div>
+                )}
+              </div>
+
+              <div className={`text-9xl font-mono font-bold tracking-tighter transition-colors duration-500 ${p1.isFlagged ? 'text-red-400' : activePlayer === 1 ? 'text-white' : 'text-zinc-600'}`}>
+                {formatTime(p1.time)}
+              </div>
+
+              <div className="mt-6 flex items-center gap-8">
+                <div className="text-sm text-zinc-500 font-bold uppercase tracking-widest">
+                  Moves <span className="text-zinc-300 ml-2">{p1.moves}</span>
+                </div>
+                {p1.isFlagged && (
+                  <div className="text-red-500 animate-bounce">
+                    <Flag size={32} fill="currentColor" />
+                  </div>
+                )}
+              </div>
             </button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => {
-                if (status === 'IDLE') {
-                  setStatus('RUNNING');
-                  setActivePlayer(activeConfig.whitePlayer);
-                } else {
-                  setStatus(status === 'RUNNING' ? 'PAUSED' : 'RUNNING');
-                }
-              }}
-              disabled={status === 'FINISHED'}
-              className={`px-10 py-4 rounded-full font-bold text-lg flex items-center gap-2 transition-all ${
-                status === 'RUNNING' 
-                  ? 'bg-amber-500 hover:bg-amber-400 text-black' 
-                  : 'bg-emerald-500 hover:bg-emerald-400 text-black'
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
-            >
-              {status === 'RUNNING' ? <><Pause size={20} fill="currentColor" /> PAUSE</> : <><Play size={20} fill="currentColor" /> START</>}
-            </button>
-            
-            <button
-              onClick={resetGame}
-              className="p-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-300"
-              title="Reset"
-            >
-              <RotateCcw size={24} />
-            </button>
+          {/* Center Controls */}
+          <div className="py-6 flex items-center justify-between gap-6">
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowConfig(true)}
+                className="p-5 rounded-2xl bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 transition-all text-zinc-400 hover:text-white active:scale-95"
+                title="Configuration"
+              >
+                <Settings size={24} />
+              </button>
+              <button 
+                onClick={() => setShowArbitration(true)}
+                disabled={status !== 'PAUSED'}
+                className={`p-5 rounded-2xl border transition-all active:scale-95 ${status === 'PAUSED' ? 'bg-zinc-800/50 border-amber-500/30 hover:bg-zinc-700/50 text-amber-400' : 'bg-zinc-900/30 border-white/5 text-zinc-700 cursor-not-allowed'}`}
+                title="Arbitration"
+              >
+                <Gavel size={24} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-6">
+              <button
+                onClick={() => {
+                  if (status === 'IDLE') {
+                    setStatus('RUNNING');
+                    setActivePlayer(activeConfig.whitePlayer);
+                  } else {
+                    setStatus(status === 'RUNNING' ? 'PAUSED' : 'RUNNING');
+                  }
+                }}
+                disabled={status === 'FINISHED'}
+                className={`h-16 px-12 rounded-2xl font-black text-xl tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-xl ${
+                  status === 'RUNNING' 
+                    ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-900/20' 
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-900/20'
+                } disabled:opacity-30 disabled:cursor-not-allowed`}
+              >
+                {status === 'RUNNING' ? <><Pause size={24} fill="currentColor" /> PAUSE</> : <><Play size={24} fill="currentColor" /> START</>}
+              </button>
+              
+              <button
+                onClick={resetGame}
+                className="p-5 rounded-2xl bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 transition-all text-zinc-400 hover:text-white active:scale-95"
+                title="Reset"
+              >
+                <RotateCcw size={24} />
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowHistory(true)}
+                disabled={moveLog.length === 0}
+                className="p-5 rounded-2xl bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 transition-all text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30"
+                title="View History"
+              >
+                <Download size={24} />
+              </button>
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowHistory(true)}
-              disabled={moveLog.length === 0}
-              className="p-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-300 disabled:opacity-30"
-              title="View History"
+          {/* Bottom Player (Player 2) */}
+          <div className="flex-1 flex flex-col gap-4">
+            <button
+              onClick={() => handlePlayerPress(2)}
+              disabled={status === 'FINISHED' || (status === 'RUNNING' && activePlayer !== 2)}
+              className={`flex-1 rounded-[32px] transition-all duration-500 flex flex-col items-center justify-center relative overflow-hidden border-4 ${
+                activePlayer === 2 
+                  ? p2.isFlagged ? 'bg-red-900/40 border-red-500 shadow-[inset_0_0_60px_rgba(239,68,68,0.3),0_0_40px_rgba(239,68,68,0.2)]' : 'bg-emerald-900/40 border-emerald-400 shadow-[inset_0_0_60px_rgba(16,185,129,0.3),0_0_40px_rgba(16,185,129,0.2)]' 
+                  : p2.isFlagged ? 'bg-red-950/20 border-red-900/50 opacity-60' : 'bg-black/40 border-zinc-800/50 opacity-60'
+              } group`}
             >
-              <Download size={24} />
+              {/* Inner Bezel Effect */}
+              <div className="absolute inset-2 rounded-[24px] border border-white/5 pointer-events-none" />
+
+              <div className="absolute top-6 left-8 flex items-center gap-3">
+                <span className="text-zinc-400 font-bold text-xl tracking-tight">{activeConfig.player2Name}</span>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${activeConfig.whitePlayer === 2 ? 'bg-white text-black' : 'bg-zinc-800 text-white border border-white/10'}`}>
+                  {activeConfig.whitePlayer === 2 ? 'WHITE' : 'BLACK'}
+                </span>
+                {p2.isFlagged && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-900/40">
+                    <Flag size={12} fill="currentColor" /> FLAGGED
+                  </div>
+                )}
+              </div>
+
+              <div className={`text-9xl font-mono font-bold tracking-tighter transition-colors duration-500 ${p2.isFlagged ? 'text-red-400' : activePlayer === 2 ? 'text-white' : 'text-zinc-600'}`}>
+                {formatTime(p2.time)}
+              </div>
+
+              <div className="mt-6 flex items-center gap-8">
+                <div className="text-sm text-zinc-500 font-bold uppercase tracking-widest">
+                  Moves <span className="text-zinc-300 ml-2">{p2.moves}</span>
+                </div>
+                {p2.isFlagged && (
+                  <div className="text-red-500 animate-bounce">
+                    <Flag size={32} fill="currentColor" />
+                  </div>
+                )}
+              </div>
             </button>
           </div>
         </div>
 
-        {/* Bottom Player (Player 2) */}
-        <div className="flex-1 flex flex-col gap-4">
-          <button
-            onClick={() => handlePlayerPress(2)}
-            disabled={status === 'FINISHED' || (status === 'RUNNING' && activePlayer !== 2)}
-            className={`flex-1 rounded-3xl transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden border-2 ${
-              activePlayer === 2 
-                ? 'bg-emerald-600 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.2)]' 
-                : 'bg-zinc-900 border-zinc-800 opacity-80'
-            } ${status === 'FINISHED' && p2.isFlagged ? 'bg-red-900 border-red-500' : ''}`}
-          >
-            <div className="absolute top-4 left-6 flex items-center gap-2">
-              <span className="text-white font-bold text-lg">{activeConfig.player2Name}</span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${activeConfig.whitePlayer === 2 ? 'bg-white text-black' : 'bg-black text-white border border-zinc-700'}`}>
-                {activeConfig.whitePlayer === 2 ? 'WHITE' : 'BLACK'}
-              </span>
-            </div>
-            <div className="text-8xl font-mono font-bold tracking-tighter">
-              {formatTime(p2.time)}
-            </div>
-            <div className="mt-4 text-2xl text-zinc-400 font-medium">
-              Moves: <span className="text-white">{p2.moves}</span>
-            </div>
-            {p2.isFlagged && <div className="absolute inset-0 bg-red-600/20 flex items-center justify-center text-4xl font-black uppercase tracking-tighter">FLAGGED</div>}
-          </button>
+        {/* Footer Info */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+          <div className="px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+            Professional Tournament Clock • {activeConfig.name}
+          </div>
+        </div>
         </div>
 
         {/* Stage Info Bar */}
-        <div className="mt-4 py-3 px-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl flex items-center justify-between text-sm">
+        <div className="py-3 px-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl flex items-center justify-between text-sm">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Active Preset</span>
             <span className="text-zinc-300 italic">{activeConfig.name}</span>
@@ -419,6 +483,7 @@ export default function App() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* History Modal */}
       <AnimatePresence>
@@ -546,6 +611,7 @@ export default function App() {
                         player1Name: 'Player 1',
                         player2Name: 'Player 2',
                         whitePlayer: 1,
+                        flaggingStopsClock: true,
                         stages: [{
                           id: 's1',
                           name: 'Stage 1',
@@ -580,6 +646,21 @@ export default function App() {
                             className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 focus:outline-none focus:border-emerald-500 transition-colors"
                           />
                         </div>
+                        <div className="flex flex-col">
+                          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Options</label>
+                          <label className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-750 transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={editingConfig.flaggingStopsClock !== undefined ? editingConfig.flaggingStopsClock : true}
+                              onChange={(e) => setEditingConfig({ ...editingConfig, flaggingStopsClock: e.target.checked })}
+                              className="w-5 h-5 rounded border-zinc-700 text-emerald-600 focus:ring-emerald-500 bg-zinc-900"
+                            />
+                            <span className="text-sm font-medium text-zinc-300">Flagging stops clock</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">White Player</label>
                           <select 
@@ -943,6 +1024,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
