@@ -19,6 +19,7 @@ export interface ClockConfig {
   player1Name: string;
   player2Name: string;
   whitePlayer: 1 | 2; // Which player is playing as White
+  whitePosition?: 'TOP' | 'BOTTOM'; // Where white appears on screen
   flaggingStopsClock: boolean;
   stages: Stage[];
 }

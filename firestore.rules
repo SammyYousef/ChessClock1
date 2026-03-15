@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/configs
+    // Document ID: configId (string)
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required, 1-100 chars)
+    //   - player1Name: string (optional, 0-50 chars)
+    //   - player2Name: string (optional, 0-50 chars)
+    //   - whitePlayer: int (optional, 1 or 2)
+    //   - flaggingStopsClock: bool (optional)
+    //   - stages: list (required, max 10)
+    //     - id: string
+    //     - name: string
+    //     - startTime: int
+    //     - endTime: int
+    //     - direction: string (UP/DOWN)
+    //     - movesInStage: int
+    //     - increment: int
+    //   - updatedAt: string (ISO 8601)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidConfig(data) {
+      return data.keys().hasAll(['id', 'name', 'stages']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.stages is list && data.stages.size() <= 10 &&
+             (!('player1Name' in data) || (data.player1Name is string && data.player1Name.size() <= 50)) &&
+             (!('player2Name' in data) || (data.player2Name is string && data.player2Name.size() <= 50)) &&
+             (!('whitePlayer' in data) || (data.whitePlayer in [1, 2])) &&
+             (!('flaggingStopsClock' in data) || (data.flaggingStopsClock is bool));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId}/configs/{configId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidConfig(request.resource.data);
+      allow update: if isOwner(userId) && isValidConfig(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

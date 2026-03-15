@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "ClockConfig": {
+      "title": "Clock Configuration",
+      "description": "A preset for the chess clock including stages and player names.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "player1Name": { "type": "string" },
+        "player2Name": { "type": "string" },
+        "whitePlayer": { "type": "integer", "enum": [1, 2] },
+        "flaggingStopsClock": { "type": "boolean" },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "startTime": { "type": "integer" },
+              "endTime": { "type": "integer" },
+              "direction": { "type": "string", "enum": ["UP", "DOWN"] },
+              "movesInStage": { "type": "integer" },
+              "increment": { "type": "integer" }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "stages"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/configs/{configId}": {
+      "schema": "ClockConfig",
+      "description": "User-specific clock configurations."
+    }
+  }
+}
